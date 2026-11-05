@@ -12,8 +12,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const DEFAULT_PORT = Number(process.env.PORT) || 5000;
 const CSV_PATH = process.env.CSV_PATH || path.join(__dirname, 'data', 'Smoking_Health_Analysis.csv');
+
+function startServer(port) {
+  const server = app.listen(port, () => {
+    console.log(`Backend server running on http://localhost:${port}`);
+  });
+
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+      console.warn(`Port ${port} is already in use. Retrying on ${nextPort}...`);
+      startServer(nextPort);
+      return;
+    }
+
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  });
+}
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
@@ -644,9 +662,7 @@ SWITCH(
 // Start server after loading data
 loadDataset()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Backend server running on http://localhost:${PORT}`);
-    });
+    startServer(DEFAULT_PORT);
   })
   .catch((err) => {
     console.error('Failed to start server due to data loading error:', err);
